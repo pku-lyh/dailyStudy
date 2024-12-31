@@ -1,0 +1,11 @@
+<component name="libraryTable">
+  <library name="dailyStudy">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/2024-1228.zip!/" />
+      <root url="jar://$PROJECT_DIR$/2021-1230.zip!/" />
+      <root url="jar://$PROJECT_DIR$/2021-1229.zip!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
