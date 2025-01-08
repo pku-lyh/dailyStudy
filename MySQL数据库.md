@@ -287,3 +287,124 @@ Read View 主要是用来做可见性判断，里面保存了 “当前对本事
 如果插入记录时候被间隙锁锁住，就会生成一个插入意向锁，代表事务在等待插入数据
 
 # MySQL日志
+## binlog（归档日志）
+### binlog和redo log有什么区别
+1. binlog是Server层实现的日志<font style="color:rgb(44, 62, 80);">，所有存储引擎都可以使用。redo log 是 Innodb 存储引擎实现的日志</font>
+2. <font style="color:rgb(44, 62, 80);">binlog是逻辑日志，记录的是所有对数据库进行修改的语句，有三种格式类型，分别是 STATEMENT（默认格式）、ROW、 MIXED。redo log是物理日志</font>
+3. <font style="color:rgb(44, 62, 80);">binlog是追加写，保存全量的日志。redo log是循环写，保存未被刷入磁盘的脏页日志</font>
+4. <font style="color:rgb(44, 62, 80);">binlog 用于备份恢复、主从复制。redo log 用于掉电等故障恢复。</font>
+
+### <font style="color:rgb(44, 62, 80);">主从复制</font>
+![](https://cdn.nlark.com/yuque/0/2025/png/39185937/1736141833193-6c6b0e30-2ef2-4e18-9556-5ae294233be5.png)
+
+<font style="color:rgb(44, 62, 80);">MySQL 集群的主从复制过程梳理成 3 个阶段：</font>
+
++ **写入 Binlog**：主库写 binlog 日志，提交事务，并更新本地存储数据。
++ **同步 Binlog**：把 binlog 复制到所有从库上，每个从库把 binlog 写到暂存日志中
++ **回放 Binlog**：回放 binlog，并更新存储引擎中的数据。
+
+<font style="color:rgb(44, 62, 80);">具体详细过程如下：</font>
+
++ <font style="color:rgb(44, 62, 80);">MySQL 主库在收到客户端提交事务的请求之后，会先写入 binlog，再提交事务，更新存储引擎中的数据，事务提交完成后，返回给客户端“操作成功”的响应。</font>
++ <font style="color:rgb(44, 62, 80);">从库会创建一个专门的 I/O 线程，连接主库的 log dump 线程，来接收主库的 binlog 日志，再把 binlog 信息写入 relay log 的中继日志里，再返回给主库“复制成功”的响应。</font>
++ <font style="color:rgb(44, 62, 80);">从库会创建一个用于回放 binlog 的线程，去读 relay log 中继日志，然后回放 binlog 更新存储引擎中的数据，最终实现主从的数据一致性。</font>
+
+### <font style="color:rgb(44, 62, 80);background-color:rgb(227, 242, 253);">MySQL 主从复制还有哪些模型？</font>
++ **同步复制**：MySQL 主库提交事务的线程要等待所有从库的复制成功响应，才返回客户端结果。
++ **异步复制**（默认模型）：MySQL 主库提交事务的线程并不会等待 binlog 同步到各从库，就返回客户端结果。这种模式一旦主库宕机，数据就会发生丢失。
++ **半同步复制**：MySQL 5.7 版本之后增加的一种复制方式，介于两者之间，事务线程不用等待所有的从库复制成功响应，只要一部分复制成功响应回来就行，比如一主二从的集群，只要数据成功复制到任意一个从库上，主库的事务线程就可以返回给客户端。这种**半同步复制的方式，兼顾了异步复制和同步复制的优点，即使出现主库宕机，至少还有一个从库有最新的数据，不存在数据丢失的风险**。
+
+### <font style="color:rgb(44, 62, 80);background-color:rgb(227, 242, 253);">什么时候 binlog cache 会写到 binlog 文件？</font>
+![](https://cdn.nlark.com/yuque/0/2025/png/39185937/1736142281151-e0e65beb-282e-4b86-88fb-43b4c3a2b122.png)
+
+<font style="color:rgb(44, 62, 80);">MySQL提供一个</font>**<font style="color:rgb(44, 62, 80);"> sync_binlog</font>**<font style="color:rgb(44, 62, 80);"> 参数来控制数据库的 binlog 刷到磁盘上的频率：</font>
+
++ <font style="color:rgb(44, 62, 80);">sync_binlog = 0 的时候，表示每次提交事务都只 write，不 fsync，后续交由操作系统决定何时将数据持久化到磁盘；</font>
++ <font style="color:rgb(44, 62, 80);">sync_binlog = 1 的时候，表示每次提交事务都会 write，然后马上执行 fsync；</font>
++ <font style="color:rgb(44, 62, 80);">sync_binlog =N(N>1) 的时候，表示每次提交事务都 write，但累积 N 个事务后才 fsync。</font>
+
+### <font style="color:rgb(44, 62, 80);">两阶段提交</font>
+![](https://cdn.nlark.com/yuque/0/2025/png/39185937/1736142853121-728e97e6-0f32-4a41-8fde-bfe817f37475.png)
+
+## redo log（重做日志）
+### <font style="color:rgb(44, 62, 80);background-color:rgb(227, 242, 253);">redo log 和 undo log 区别在哪？</font>
++ redo log 记录了此次事务「**修改后**」的数据状态，记录的是更新**之后**的值，**主要用于事务崩溃恢复，保证事务的持久性**。
++ undo log 记录了此次事务「**修改前**」的数据状态，记录的是更新**之前**的值，**主要用于事务回滚，保证事务的原子性**。
+
+![](https://cdn.nlark.com/yuque/0/2025/png/39185937/1736140665047-9b1bc618-9d1e-456f-a521-72909f249f44.png)
+
+### <font style="color:rgb(44, 62, 80);">redo log 要写到磁盘，数据也要写磁盘，为什么要多此一举？</font>
+写入 redo log 的方式使用了追加操作， 所以磁盘操作是**顺序写**，而写入数据需要先找到写入位置，然后才写到磁盘，所以磁盘操作是**随机写**。
+
+### 刷盘时机
+InnoDB 将 redo log 刷到磁盘上有几种情况：
+
+1. 事务提交：当事务提交时，log buffer 里的 redo log 会被刷新到磁盘（可以通过`innodb_flush_log_at_trx_commit`参数控制，后文会提到）。
+2. log buffer 空间不足时：log buffer 中缓存的 redo log 已经占满了 log buffer 总容量的大约一半左右，就需要把这些日志刷新到磁盘上。
+3. 事务日志缓冲区满：InnoDB 使用一个事务日志缓冲区（transaction log buffer）来暂时存储事务的重做日志条目。当缓冲区满时，会触发日志的刷新，将日志写入磁盘。
+4. Checkpoint（检查点）：InnoDB 定期会执行检查点操作，将内存中的脏数据（已修改但尚未写入磁盘的数据）刷新到磁盘，并且会将相应的重做日志一同刷新，以确保数据的一致性。
+5. 后台刷新线程：InnoDB 启动了一个后台线程，负责周期性（每隔 1 秒）地将脏页（已修改但尚未写入磁盘的数据页）刷新到磁盘，并将相关的重做日志一同刷新。
+6. 正常关闭服务器：MySQL 关闭的时候，redo log 都会刷入到磁盘里去。
+
+`innodb_flush_log_at_trx_commit` 的值有 3 种，也就是共有 3 种刷盘策略：
+
++ **0**：设置为 0 的时候，表示每次事务提交时不进行刷盘操作。这种方式性能最高，但是也最不安全，因为如果 MySQL 挂了或宕机了，可能会丢失最近 1 秒内的事务。
++ **1**：设置为 1 的时候，表示每次事务提交时都将进行刷盘操作。这种方式性能最低，但是也最安全，因为只要事务提交成功，redo log 记录就一定在磁盘里，不会有任何数据丢失。
++ **2**：设置为 2 的时候，表示每次事务提交时都只把 log buffer 里的 redo log 内容写入 page cache（文件系统缓存）。page cache 是专门用来缓存文件的，这里被缓存的文件就是 redo log 文件。这种方式的性能和安全性都介于前两者中间。
+
+## Undo log（回滚日志）
+1. 每一个事务对数据的修改都会被记录到 undo log ，当执行事务过程中出现错误或者需要执行回滚操作的话，MySQL 可以利用 undo log 将数据恢复到事务开始之前的状态。
+2. undo log 属于逻辑日志，记录的是 SQL 语句，比如说事务执行一条 DELETE 语句，那 undo log 就会记录一条相对应的 INSERT 语句。同时，undo log 的信息也会被记录到 redo log 中，因为 undo log 也要实现持久性保护。并且，undo-log 本身是会被删除清理的，例如 INSERT 操作，在事务提交之后就可以清除掉了；UPDATE/DELETE 操作在事务提交不会立即删除<font style="color:rgb(60, 60, 67);">，会加入 history list，由后台线程 purge 进行清理；回滚时候对insert语句是直接插入，而</font><font style="color:rgb(44, 62, 80);">针对 delete 操作和 update 操作会有一些特殊的处理：</font>
++ delete对象会被打上delete flag，由后台线程 purge 进行清理。
++ update的列不是主键列的话会直接反向记录update，否则先删除该行再插入目标行
+3. undo log 是采用 segment（段）的方式来记录的，每个 undo 操作在记录的时候占用一个 **undo log segment**（undo 日志段），undo log segment 包含在 **rollback segment**（回滚段）中。事务开始时，需要为其分配一个 rollback segment。每个 rollback segment 有 1024 个 undo log segment，这有助于管理多个并发事务的回滚需求。
+4. 通常情况下， **rollback segment header**（通常在回滚段的第一个页）负责管理 rollback segment。rollback segment header 是 rollback segment 的一部分，通常在回滚段的第一个页。**history list** 是 rollback segment header 的一部分，它的主要作用是记录所有已经提交但还没有被清理（purge）的事务的 undo log。这个列表使得 purge 线程能够找到并清理那些不再需要的 undo log 记录。
+5. 另外，`MVCC` 的实现依赖于：**隐藏字段、Read View、undo log**。在内部实现中，InnoDB 通过数据行的 `DB_TRX_ID` 和 `Read View` 来判断数据的可见性，如不可见，则通过数据行的 `DB_ROLL_PTR` 找到 undo log 中的历史版本。每个事务读到的数据版本可能是不一样的，在同一个事务中，用户只能看到该事务创建 `Read View` 之前已经提交的修改和该事务本身做的修改
+
+## Buffer Pool
+InnoDb会为Buffer Pool申请一片连续的内存空间，然后按照默认的16KB大小划分出一个个的页，Buffer Pool中的页就叫做缓存页（默认大小128MB）
+
+![](https://cdn.nlark.com/yuque/0/2025/png/39185937/1736140243665-130dda91-6027-47eb-9355-302f4db6d758.png)
+
+Undo页是用来记录undo log的
+
+查询一条记录时会将该记录的整个页的数据加载到Buffer Pool当中
+
+**WAL（Weite-Ahead Logging）技术：**MySQL的写操作并不是立刻写到磁盘上，而是先写日志，然后在合适的时机写在磁盘上。
+
+![](https://cdn.nlark.com/yuque/0/2025/png/39185937/1736140474693-1e107d37-fb09-484a-b064-2903603862b2.png)
+
+### <font style="color:rgb(44, 62, 80);">如何管理空闲页？</font>
+**Free链表（空闲链表）：**
+
+![](https://cdn.nlark.com/yuque/0/2025/png/39185937/1736143179068-df79f14b-5e67-4f2f-819d-d386994372f5.png)
+
+### <font style="color:rgb(44, 62, 80);">如何管理脏页？</font>
+Flush链表（刷新链表）：
+
+![](https://cdn.nlark.com/yuque/0/2025/png/39185937/1736143269164-3b60791a-c0ea-4e5c-ae5d-4154e902b2ad.png)
+
+### 怎样避免预读失效？
+MySQL 是这样做的，它改进了 LRU 算法，将 LRU 划分了 2 个区域：**old 区域 和 young 区域**。
+
+young 区域在 LRU 链表的前半部分，old 区域则是在后半部分，如下图：
+
+![](https://cdn.nlark.com/yuque/0/2025/png/39185937/1736143588583-f64887ff-ab5a-4c25-a6be-68f452246115.png)
+
+old 区域占整个 LRU 链表长度的比例可以通过 `innodb_old_blocks_pct` 参数来设置，默认是 37，代表整个 LRU 链表中young 区域与 old 区域比例是 63:37。
+
+**划分这两个区域后，预读的页就只需要加入到 old 区域的头部，当页被真正访问的时候，才将页插入 young 区域的头部**。如果预读的页一直没有被访问，就会从 old 区域移除，这样就不会影响 young 区域中的热点数据。
+
+### Buffer Pool污染
+当某一个 SQL 语句**扫描了大量的数据**时，在 Buffer Pool 空间比较有限的情况下，可能会将 **Buffer Pool 里的所有页都替换出去，导致大量热数据被淘汰了，**等这些热数据又被再次访问的时候，由于缓存未命中，就会产生大量的磁盘 IO，MySQL 性能就会急剧下降，这个过程被称为 **Buffer Pool 污染**。
+
+**怎么解决？**
+
+MySQL 是这样做的，进入到 young 区域条件增加了一个**停留在 old 区域的时间判断**。如果后续的访问时间与第一次访问的时间**在某个时间间隔内**，那么**该缓存页就不会被从 old 区域移动到 young 区域的头部**；<font style="color:rgb(44, 62, 80);">另外，MySQL 针对 young 区域其实做了一个优化，为了防止 young 区域节点频繁移动到头部。young 区域前面 1/4 被访问不会移动到链表头部，只有后面的 3/4被访问了才会。</font>
+
+### <font style="color:rgb(44, 62, 80);">脏页什么时候会被刷入磁盘</font>
++ <font style="color:rgb(44, 62, 80);">当 redo log 日志满了的情况下，会主动触发脏页刷新到磁盘；</font>
++ <font style="color:rgb(44, 62, 80);">Buffer Pool 空间不足时，需要将一部分数据页淘汰掉，如果淘汰的是脏页，需要先将脏页同步到磁盘；</font>
++ <font style="color:rgb(44, 62, 80);">MySQL 认为空闲时，后台线程会定期将适量的脏页刷入到磁盘；</font>
++ <font style="color:rgb(44, 62, 80);">MySQL 正常关闭之前，会把所有的脏页刷入到磁盘；</font>
+
