@@ -500,5 +500,198 @@ public class DebugInvocationHandler implements InvocationHandler {
 + `transient` 修饰的变量，在反序列化后变量值将会被置成类型的默认值。例如，如果是修饰 `int` 类型，那么反序列后结果就是 `0`。
 + `static` 变量因为不属于任何对象(Object)，所以无论有没有 `transient` 关键字修饰，均不会被序列化。
 
+# I/O
+## Java IO 流了解吗？
+IO 即 `Input/Output`，输入和输出。数据输入到计算机内存的过程即输入，反之输出到外部存储（比如数据库，文件，远程主机）的过程即输出。数据传输过程类似于水流，因此称为 IO 流。IO 流在 Java 中分为输入流和输出流，而根据数据的处理方式又分为字节流和字符流。
 
+Java IO 流的 40 多个类都是从如下 4 个抽象类基类中派生出来的。
+
++ `InputStream`/`Reader`: 所有的输入流的基类，前者是字节输入流，后者是字符输入流。
++ `OutputStream`/`Writer`: 所有输出流的基类，前者是字节输出流，后者是字符输出流。
+
+## I/O 流为什么要分为字节流和字符流呢?
+问题本质想问：**不管是文件读写还是网络发送接收，信息的最小存储单元都是字节，那为什么 I/O 流操作要分为字节流操作和字符流操作呢？**
+
++ 字符流是由 Java 虚拟机将字节转换得到的，这个过程还算是比较耗时；
++ 如果我们不知道编码类型的话，使用字节流的过程中很容易出现乱码问题。
+
+## Java IO 中的设计模式有哪些？
+### 装饰器模式
+**装饰器（Decorator）模式** 可以在不改变原有对象的情况下拓展其功能。
+
+装饰器模式通过组合替代继承来扩展原始类的功能，在一些继承关系比较复杂的场景（IO 这一场景各种类的继承关系就比较复杂）更加实用。
+
+### 适配器模式
+**适配器（Adapter Pattern）模式** 主要用于接口互不兼容的类的协调工作，你可以将其联想到我们日常经常使用的电源适配器。
+
+适配器模式中存在被适配的对象或者类称为 **适配者(Adaptee)** ，作用于适配者的对象或者类称为**适配器(Adapter)** 。适配器分为对象适配器和类适配器。类适配器使用继承关系来实现，对象适配器使用组合关系来实现。
+
+IO 流中的字符流和字节流的接口不同，它们之间可以协调工作就是基于适配器模式来做的，更准确点来说是对象适配器。通过适配器，我们可以将字节流对象适配成一个字符流对象，这样我们可以直接通过字节流对象来读取或者写入字符数据
+
+### 工厂模式
+工厂模式用于创建对象，NIO 中大量用到了工厂模式，比如 `Files` 类的 `newInputStream` 方法用于创建 `InputStream` 对象（静态工厂）、 `Paths` 类的 `get` 方法创建 `Path` 对象（静态工厂）、`ZipFileSystem` 类（`sun.nio`包下的类，属于 `java.nio` 相关的一些内部实现）的 `getPath` 的方法创建 `Path` 对象（简单工厂）。
+
+### 观察者模式
+NIO 中的文件目录监听服务使用到了观察者模式。
+
+NIO 中的文件目录监听服务基于 `WatchService` 接口和 `Watchable` 接口。`WatchService` 属于观察者，`Watchable` 属于被观察者。
+
+## BIO、NIO 和 AIO 的区别？
+## BIO (Blocking I/O)
+**BIO 属于同步阻塞 IO 模型** 。
+
+同步阻塞 IO 模型中，应用程序发起 read 调用后，会一直阻塞，直到内核把数据拷贝到用户空间。
+
+![](https://cdn.nlark.com/yuque/0/2025/png/39185937/1737431008237-2edb5041-ac8e-4ea4-9cb3-c157b845a578.png)
+
+在客户端连接数量不高的情况下，是没问题的。但是，当面对十万甚至百万级连接的时候，传统的 BIO 模型是无能为力的。因此，我们需要一种更高效的 I/O 处理模型来应对更高的并发量。
+
+## NIO (Non-blocking/New I/O)
+Java 中的 NIO ，有一个非常重要的**选择器 ( Selector )** 的概念，也可以被称为 **多路复用器**。通过它，只需要一个线程便可以管理多个客户端连接。当客户端数据到了之后，才会为其服务。
+
+NIO 主要包括以下三个核心组件：
+
++ **Buffer（缓冲区）**：NIO 读写数据都是通过缓冲区进行操作的。读操作的时候将 Channel 中的数据填充到 Buffer 中，而写操作时将 Buffer 中的数据写入到 Channel 中。
++ **Channel（通道）**：Channel 是一个双向的、可读可写的数据传输通道，NIO 通过 Channel 来实现数据的输入输出。通道是一个抽象的概念，它可以代表文件、套接字或者其他数据源之间的连接。
++ **Selector（选择器）**：允许一个线程处理多个 Channel，基于事件驱动的 I/O 多路复用模型。所有的 Channel 都可以注册到 Selector 上，由 Selector 来分配线程来处理事件。
+
+![](https://cdn.nlark.com/yuque/0/2025/png/39185937/1737431138298-e1088d87-abf2-43c2-9d2e-9b9a14ed64ec.png)
+
+### Selector（选择器）
+Selector（选择器） 是 NIO 中的一个关键组件，它允许一个线程处理多个 Channel。Selector 是基于事件驱动的 I/O 多路复用模型，主要运作原理是：通过 Selector 注册通道的事件，Selector 会不断地轮询注册在其上的 Channel。当事件发生时，比如：某个 Channel 上面有新的 TCP 连接接入、读和写事件，这个 Channel 就处于就绪状态，会被 Selector 轮询出来。Selector 会将相关的 Channel 加入到就绪集合中。通过 SelectionKey 可以获取就绪 Channel 的集合，然后对这些就绪的 Channel 进行相应的 I/O 操作。
+
+![](https://cdn.nlark.com/yuque/0/2025/png/39185937/1737431859803-7216a46a-1d52-40d5-8da0-78132a2857b0.png)
+
+一个多路复用器 Selector 可以同时轮询多个 Channel，由于 JDK 使用了 `epoll()` 代替传统的 `select` 实现，所以它并没有最大连接句柄 `1024/2048` 的限制。这也就意味着只需要一个线程负责 Selector 的轮询，就可以接入成千上万的客户端。
+
+Selector 可以监听以下四种事件类型：
+
+1. `SelectionKey.OP_ACCEPT`：表示通道接受连接的事件，这通常用于 `ServerSocketChannel`。
+2. `SelectionKey.OP_CONNECT`：表示通道完成连接的事件，这通常用于 `SocketChannel`。
+3. `SelectionKey.OP_READ`：表示通道准备好进行读取的事件，即有数据可读。
+4. `SelectionKey.OP_WRITE`：表示通道准备好进行写入的事件，即可以写入数据。
+
+
+
+## AIO (Asynchronous I/O)
+AIO 也就是 NIO 2。Java 7 中引入了 NIO 的改进版 NIO 2,它是异步 IO 模型。
+
+异步 IO 是基于事件和回调机制实现的，也就是应用操作之后会直接返回，不会堵塞在那里，当后台处理完成，操作系统会通知相应的线程进行后续的操作。
+
+![](https://cdn.nlark.com/yuque/0/2025/png/39185937/1737431169131-a8ae3ec8-0a9b-4179-b45c-c14a31e733c1.png)
+
+目前来说 AIO 的应用还不是很广泛。Netty 之前也尝试使用过 AIO，不过又放弃了。这是因为，Netty 使用了 AIO 之后，在 Linux 系统上的性能并没有多少提升。
+
+最后，来一张图，简单总结一下 Java 中的 BIO、NIO、AIO。
+
+![](https://cdn.nlark.com/yuque/0/2025/png/39185937/1737431169137-e02c9d39-5438-40af-82d6-caac6f59126b.png)
+
+# Java代理模式详解
+## 静态代理
+**静态代理中，我们对目标对象的每个方法的增强都是手动完成的，非常不灵活（**_**比如接口一旦新增加方法，目标对象和代理对象都要进行修改**_**）且麻烦(**_**需要对每个目标类都单独写一个代理类**_**）。** 实际应用场景非常非常少，日常开发几乎看不到使用静态代理的场景。
+
+上面我们是从实现和应用角度来说的静态代理，从 JVM 层面来说， **静态代理在编译时就将接口、实现类、代理类这些都变成了一个个实际的 class 文件。**
+
+静态代理实现步骤:
+
+1. 定义一个接口及其实现类；
+2. 创建一个代理类同样实现这个接口
+3. 将目标对象注入进代理类，然后在代理类的对应方法调用目标类中的对应方法。这样的话，我们就可以通过代理类屏蔽对目标对象的访问，并且可以在目标方法执行前后做一些自己想做的事情。
+
+## 动态代理
+相比于静态代理来说，动态代理更加灵活。我们不需要针对每个目标类都单独创建一个代理类，并且也不需要我们必须实现接口，我们可以直接代理实现类( _CGLIB 动态代理机制_)。
+
+**从 JVM 角度来说，动态代理是在运行时动态生成类字节码，并加载到 JVM 中的。**
+
+说到动态代理，Spring AOP、RPC 框架应该是两个不得不提的，它们的实现都依赖了动态代理。
+
+**动态代理在我们日常开发中使用的相对较少，但是在框架中的几乎是必用的一门技术。学会了动态代理之后，对于我们理解和学习各种框架的原理也非常有帮助。**
+
+就 Java 来说，动态代理的实现方式有很多种，比如 **JDK 动态代理**、**CGLIB 动态代理**等等。
+
+### <font style="color:rgb(60, 60, 67);">JDK 动态代理机制</font>
+**<font style="color:rgb(60, 60, 67);">在 Java 动态代理机制中 </font>**`**<font style="color:rgb(60, 60, 67);">InvocationHandler</font>**`**<font style="color:rgb(60, 60, 67);"> 接口和 </font>**`**<font style="color:rgb(60, 60, 67);">Proxy</font>**`**<font style="color:rgb(60, 60, 67);"> 类是核心。</font>**
+
+`Proxy` 类中使用频率最高的方法是：`newProxyInstance()` ，这个方法主要用来生成一个代理对象。
+
+```java
+public static Object newProxyInstance(ClassLoader loader,
+                                      Class<?>[] interfaces,
+                                      InvocationHandler h)
+throws IllegalArgumentException
+{
+......
+}
+```
+
+这个方法一共有 3 个参数：
+
+1. **loader** :类加载器，用于加载代理对象。
+2. **interfaces** : 被代理类实现的一些接口；
+3. **h** : 实现了 `InvocationHandler` 接口的对象；
+
+要实现动态代理的话，还必须需要实现`InvocationHandler` 来自定义处理逻辑。 当我们的动态代理对象调用一个方法时，这个方法的调用就会被转发到实现`InvocationHandler` 接口类的 `invoke` 方法来调用。
+
+```java
+public interface InvocationHandler {
+
+    /**
+     * 当你使用代理对象调用方法的时候实际会调用到这个方法
+     */
+    public Object invoke(Object proxy, Method method, Object[] args)
+    throws Throwable;
+}
+```
+
+`invoke()` 方法有下面三个参数：
+
+1. **proxy** :动态生成的代理类
+2. **method** : 与代理类对象调用的方法相对应
+3. **args** : 当前 method 方法的参数
+
+也就是说：**你通过**`**Proxy**`** 类的 **`**newProxyInstance()**`** 创建的代理对象在调用方法的时候，实际会调用到实现**`**InvocationHandler**`** 接口的类的 **`**invoke()**`**方法。** 你可以在 `invoke()` 方法中自定义处理逻辑，比如在方法执行前后做什么事情。
+
+#### JDK 动态代理类使用步骤
+1. 定义一个接口及其实现类；
+2. 自定义 `InvocationHandler` 并重写`invoke`方法，在 `invoke` 方法中我们会调用原生方法（被代理类的方法）并自定义一些处理逻辑；
+3. 通过 `Proxy.newProxyInstance(ClassLoader loader,Class<?>[] interfaces,InvocationHandler h)` 方法创建代理对象；
+
+### <font style="color:rgb(60, 60, 67);">CGLIB 动态代理机制</font>
+**JDK 动态代理有一个最致命的问题是其只能代理实现了接口的类。**
+
+**为了解决这个问题，我们可以用 CGLIB 动态代理机制来避免。**
+
+CGLIB(_Code Generation Library_)是一个基于ASM的字节码生成库，它允许我们在运行时对字节码进行修改和动态生成。CGLIB 通过继承方式实现代理。很多知名的开源框架都使用到了CGLIB， 例如 Spring 中的 AOP 模块中：如果目标对象实现了接口，则默认采用 JDK 动态代理，否则采用 CGLIB 动态代理。
+
+**在 CGLIB 动态代理机制中 **`**MethodInterceptor**`** 接口和 **`**Enhancer**`** 类是核心。**
+
+你需要自定义 `MethodInterceptor` 并重写 `intercept` 方法，`intercept` 用于拦截增强被代理类的方法。
+
+```java
+public interface MethodInterceptor
+extends Callback{
+    // 拦截被代理类中的方法
+    public Object intercept(Object obj, java.lang.reflect.Method method, Object[] args,MethodProxy proxy) throws Throwable;
+}
+```
+
+1. **obj** : 被代理的对象（需要增强的对象）
+2. **method** : 被拦截的方法（需要增强的方法）
+3. **args** : 方法入参
+4. **proxy** : 用于调用原始方法
+
+你可以通过 `Enhancer`类来动态获取被代理类，当代理类调用方法的时候，实际调用的是 `MethodInterceptor` 中的 `intercept` 方法。
+
+#### CGLIB 动态代理类使用步骤
+1. 定义一个类；
+2. 自定义 `MethodInterceptor` 并重写 `intercept` 方法，`intercept` 用于拦截增强被代理类的方法，和 JDK 动态代理中的 `invoke` 方法类似；
+3. 通过 `Enhancer` 类的 `create()`创建代理类；
+
+### JDK 动态代理和 CGLIB 动态代理对比
+1. **JDK 动态代理只能代理实现了接口的类或者直接代理接口，而 CGLIB 可以代理未实现任何接口的类。** 另外， CGLIB 动态代理是通过生成一个被代理类的子类来拦截被代理类的方法调用，因此不能代理声明为 final 类型的类和方法。
+2. 就二者的效率来说，大部分情况都是 JDK 动态代理更优秀，随着 JDK 版本的升级，这个优势更加明显。
+
+## 静态代理和动态代理的对比
+1. **灵活性**：动态代理更加灵活，不需要必须实现接口，可以直接代理实现类，并且可以不需要针对每个目标类都创建一个代理类。另外，静态代理中，接口一旦新增加方法，目标对象和代理对象都要进行修改，这是非常麻烦的！
+2. **JVM 层面**：静态代理在编译时就将接口、实现类、代理类这些都变成了一个个实际的 class 文件。而动态代理是在运行时动态生成类字节码，并加载到 JVM 中的。
 
