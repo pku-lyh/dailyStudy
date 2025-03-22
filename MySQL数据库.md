@@ -1,5 +1,5 @@
 # MySQL基础
-## <font style="color:rgb(44, 62, 80);">执行一条 select 语句，期间发生了什么？</font>
+## 执行一条 select 语句，期间发生了什么？
 ![](https://cdn.nlark.com/yuque/0/2025/png/39185937/1735982642578-663273aa-8eff-4c87-abee-9941a112e009.png)
 
 从上图可以看出， MySQL 主要由下面几部分构成：
@@ -22,7 +22,7 @@
 ## 索引类型总结
 **按照数据结构维度划分：**
 
-+ BTree 索引：MySQL 里默认和最常用的索引类型。只有叶子节点存储 value，非叶子节点只有指针和 key。存储引擎 MyISAM 和 InnoDB 实现 BTree 索引都是使用 B+Tree，但二者实现方式不一样（前面已经介绍了）。
++ BTree 索引：MySQL 里默认和最常用的索引类型。只有叶子节点存储 value，非叶子节点只有指针和 key。存储引擎 MyISAM 和 InnoDB 实现 BTree 索引都是使用 B+Tree，但二者实现方式不一样。
 + 哈希索引：类似键值对的形式，一次即可定位。
 + RTree 索引：一般不会使用，仅支持 geometry 数据类型，优势在于范围查找，效率较低，通常使用搜索引擎如 ElasticSearch 代替。
 + 全文索引：对文本的内容进行分词，进行搜索。目前只有 `CHAR`、`VARCHAR` ，`TEXT` 列上可以创建全文索引。一般不会使用，效率较低，通常使用搜索引擎如 ElasticSearch 代替。
@@ -42,7 +42,7 @@
 + 全文索引：对文本的内容进行分词，进行搜索。目前只有 `CHAR`、`VARCHAR` ，`TEXT` 列上可以创建全文索引。一般不会使用，效率较低，通常使用搜索引擎如 ElasticSearch 代替。
 + 前缀索引：对文本的前几个字符创建索引，相比普通索引建立的数据更小，因为只取前几个字符。
 
-## 为什么使用B+树作为索引
+## <font style="color:#DF2A3F;">为什么使用B+树作为索引（看下详细点的）</font>
 **个人观点：javaGuide总结了很多其他数据结构的不足，但是我认为其实用两句话就可以总结为什么用B+树：**
 
 + **因为B+树的非叶子节点不用存储数据，B+树用更少的层数（也就是更少的磁盘IO）就能查询到更多的数据。**
@@ -86,7 +86,7 @@
 ### 字符串类型的字段使用前缀索引代替普通索引
 前缀索引仅限于字符串类型，较普通索引会占用更小的空间，所以可以考虑使用前缀索引带替普通索引。
 
-### 避免索引失效
+### <font style="color:#DF2A3F;">避免索引失效（索引失效的场景，问的多）</font>
 索引失效也是慢查询的主要原因之一，常见的导致索引失效的情况有下面这些：
 
 + ~~使用 ~~`~~SELECT *~~`~~ 进行查询;~~`SELECT *` 不会直接导致索引失效（如果不走索引大概率是因为 where 查询范围过大导致的），但它可能会带来一些其他的性能问题比如造成网络传输和数据处理的浪费、无法使用索引覆盖;
@@ -107,7 +107,7 @@ MySQL 5.7 可以通过查询 `sys` 库的 `schema_unused_indexes` 视图来查�
 ![](https://cdn.nlark.com/yuque/0/2025/png/39185937/1736001211921-8ee4bceb-a755-4a2b-a44d-8326488ee136.png)
 
 # MySQL事务
-## 事务的四大特性
+## <font style="color:#DF2A3F;">事务的四大特性</font>
 1. 原子性（`Atomicity`）：事务是最小的执行单位，不允许分割。事务的原子性确保动作要么全部完成，要么完全不起作用；**（undo log回滚日志）**
 2. 一致性（`Consistency`）：执行事务前后，数据保持一致，例如转账业务中，无论事务是否成功，转账者和收款人的总额应该是不变的；
 3. 隔离性（`Isolation`）：并发访问数据库时，一个用户的事务不被其他事务所干扰，各并发事务之间数据库是独立的；**（MVCC+锁）**
@@ -115,11 +115,11 @@ MySQL 5.7 可以通过查询 `sys` 库的 `schema_unused_indexes` 视图来查�
 
 🌈 这里要额外补充一点：只有保证了事务的持久性、原子性、隔离性之后，一致性才能得到保障。也就是说 A、I、D 是手段，C 是目的！
 
-## <font style="color:rgb(60, 60, 67);">并发事务带来了哪些问题?</font>
+## <font style="color:#DF2A3F;">并发事务带来了哪些问题?</font>
 ### 脏读（Dirty read）
 一个事务读取数据并且对数据进行了修改，这个修改对其他事务来说是可见的，即使当前事务没有提交。这时另外一个事务读取了这个还未提交的数据，但第一个事务突然回滚，导致数据并没有被提交到数据库，那第二个事务读取到的就是脏数据，这也就是脏读的由来。
 
-### 丢失修改（Lost to modify）
+### 丢失修改（Lost to modify）（可以不说）
 在一个事务读取一个数据时，另外一个事务也访问了该数据，那么在第一个事务中修改了这个数据后，第二个事务也修改了这个数据。这样第一个事务内的修改结果就被丢失，因此称为丢失修改。
 
 ### 不可重复读（Unrepeatable read）
@@ -128,19 +128,19 @@ MySQL 5.7 可以通过查询 `sys` 库的 `schema_unused_indexes` 视图来查�
 ### 幻读（Phantom read）
 幻读与不可重复读类似。它发生在一个事务读取了几行数据，接着另一个并发事务插入了一些数据时。在随后的查询中，第一个事务就会发现多了一些原本不存在的记录，就好像发生了幻觉一样，所以称为幻读。
 
-## 事务的隔离级别
+## <font style="color:#DF2A3F;">事务的隔离级别</font>
 + **READ-UNCOMMITTED(读取未提交)** ：最低的隔离级别，允许读取尚未提交的数据变更，可能会导致脏读、幻读或不可重复读。
 + **READ-COMMITTED(读取已提交)** ：允许读取并发事务已经提交的数据，可以阻止脏读，但是幻读或不可重复读仍有可能发生。
 + **REPEATABLE-READ(可重复读)** ：对同一字段的多次读取结果都是一致的，除非数据是被本身事务自己所修改，可以阻止脏读和不可重复读，但幻读仍有可能发生。
 + **SERIALIZABLE(可串行化)** ：最高的隔离级别，完全服从 ACID 的隔离级别。所有的事务依次逐个执行，这样事务之间就完全不可能产生干扰，也就是说，该级别可以防止脏读、不可重复读以及幻读。
 
-### InnoDb引擎的可重复读级别可以解决部分幻读问题
+### <font style="color:#DF2A3F;">InnoDb引擎的可重复读级别可以解决部分幻读问题</font>
 + 针对快照读通过MVCC
-+ 针对当前读使用临建锁
++ 针对当前读使用临键锁
 
 **先使用快照读，其他事务修改数据后使用当前读会出现幻读**
 
-## InnoDB 对 MVCC 的实现
+## <font style="color:#DF2A3F;">InnoDB 对 MVCC 的实现（可以看具体的讲解）</font>
 `MVCC` 的实现依赖于：隐藏字段、Read View、undo log。在内部实现中，`InnoDB` 通过数据行的 `DB_TRX_ID（上一次操作数据的事务id）` 和 `Read View` 来判断数据的可见性，如不可见，则通过数据行的 `DB_ROLL_PTR（回滚指针）` 找到 `undo log` 中的历史版本。每个事务读到的数据版本可能是不一样的，在同一个事务中，用户只能看到该事务创建 `Read View` 之前已经提交的修改和该事务本身做的修改
 
 ### 隐藏字段
@@ -151,21 +151,21 @@ MySQL 5.7 可以通过查询 `sys` 库的 `schema_unused_indexes` 视图来查�
 + `DB_ROW_ID（6字节）`：如果没有设置主键且该表没有唯一非空索引时，`InnoDB` 会使用该 id 来生成聚簇索引
 
 ### ReadView
-```plain
+```java
 class ReadView {
-  /* ... */
-private:
-  trx_id_t m_low_limit_id;      /* 大于等于这个 ID 的事务均不可见 */
+    /* ... */
+    private:
+    trx_id_t m_low_limit_id;      /* 大于等于这个 ID 的事务均不可见 */
 
-  trx_id_t m_up_limit_id;       /* 小于这个 ID 的事务均可见 */
+    trx_id_t m_up_limit_id;       /* 小于这个 ID 的事务均可见 */
 
-  trx_id_t m_creator_trx_id;    /* 创建该 Read View 的事务ID */
+    trx_id_t m_creator_trx_id;    /* 创建该 Read View 的事务ID */
 
-  trx_id_t m_low_limit_no;      /* 事务 Number, 小于该 Number 的 Undo Logs 均可以被 Purge */
+    trx_id_t m_low_limit_no;      /* 事务 Number, 小于该 Number 的 Undo Logs 均可以被 Purge */
 
-  ids_t m_ids;                  /* 创建 Read View 时的活跃事务列表 */
+    ids_t m_ids;                  /* 创建 Read View 时的活跃事务列表 */
 
-  m_closed;                     /* 标记 Read View 是否 close */
+    m_closed;                     /* 标记 Read View 是否 close */
 }
 ```
 
@@ -203,13 +203,13 @@ Read View 主要是用来做可见性判断，里面保存了 “当前对本事
     - 在活跃事务列表中找不到，则表明“id 为 trx_id 的事务”在修改“该记录行的值”后，在“当前事务”创建快照前就已经提交了，所以记录行对当前事务可见
 5. 在该记录行的 DB_ROLL_PTR 指针所指向的 `undo log` 取出快照记录，用快照记录的 DB_TRX_ID 跳到步骤 1 重新开始判断，直到找到满足的快照版本或返回空
 
-## RC 和 RR 隔离级别下 MVCC 的差异
+## <font style="color:#DF2A3F;">RC 和 RR 隔离级别下 MVCC 的差异</font>
 在事务隔离级别 `RC` 和 `RR` （InnoDB 存储引擎的默认事务隔离级别）下，`InnoDB` 存储引擎使用 `MVCC`（非锁定一致性读），但它们生成 `Read View` 的时机却不同
 
 + 在 RC 隔离级别下的 `**每次select**` 查询前都生成一个`Read View` (m_ids 列表)
 + 在 RR 隔离级别下只在事务开始后 `**第一次select**` 数据前生成一个`Read View`（m_ids 列表）
 
-# MySQL锁
+# <font style="color:#DF2A3F;">MySQL锁（让介绍mysql的锁）</font>
 ## 全局锁
 全局锁主要用于**全库逻辑备份**，这样在备份数据库期间，不会因为数据或表结构的更新，而出现备份文件的数据与预期的不一样
 
@@ -286,54 +286,54 @@ Read View 主要是用来做可见性判断，里面保存了 “当前对本事
 ### 插入意向锁
 如果插入记录时候被间隙锁锁住，就会生成一个插入意向锁，代表事务在等待插入数据
 
-# MySQL日志
+# <font style="color:#DF2A3F;">MySQL日志</font>
 ## binlog（归档日志）
-### binlog和redo log有什么区别
-1. binlog是Server层实现的日志<font style="color:rgb(44, 62, 80);">，所有存储引擎都可以使用。redo log 是 Innodb 存储引擎实现的日志</font>
-2. <font style="color:rgb(44, 62, 80);">binlog是逻辑日志，记录的是所有对数据库进行修改的语句，有三种格式类型，分别是 STATEMENT（默认格式）、ROW、 MIXED。redo log是物理日志</font>
-3. <font style="color:rgb(44, 62, 80);">binlog是追加写，保存全量的日志。redo log是循环写，保存未被刷入磁盘的脏页日志</font>
-4. <font style="color:rgb(44, 62, 80);">binlog 用于备份恢复、主从复制。redo log 用于掉电等故障恢复。</font>
+### <font style="color:#DF2A3F;">binlog和redo log有什么区别（没被问，了解）</font>
+1. binlog是Server层实现的日志，所有存储引擎都可以使用。redo log 是 Innodb 存储引擎实现的日志
+2. binlog是逻辑日志，记录的是所有对数据库进行修改的语句，有三种格式类型，分别是 STATEMENT（默认格式）、ROW、 MIXED。redo log是物理日志
+3. binlog是追加写，保存全量的日志。redo log是循环写，保存未被刷入磁盘的脏页日志
+4. binlog 用于备份恢复、主从复制。redo log 用于掉电等故障恢复。
 
-### <font style="color:rgb(44, 62, 80);">主从复制</font>
+### <font style="color:#DF2A3F;">主从复制</font>
 ![](https://cdn.nlark.com/yuque/0/2025/png/39185937/1736141833193-6c6b0e30-2ef2-4e18-9556-5ae294233be5.png)
 
-<font style="color:rgb(44, 62, 80);">MySQL 集群的主从复制过程梳理成 3 个阶段：</font>
+MySQL 集群的主从复制过程梳理成 3 个阶段：
 
 + **写入 Binlog**：主库写 binlog 日志，提交事务，并更新本地存储数据。
 + **同步 Binlog**：把 binlog 复制到所有从库上，每个从库把 binlog 写到暂存日志中
 + **回放 Binlog**：回放 binlog，并更新存储引擎中的数据。
 
-<font style="color:rgb(44, 62, 80);">具体详细过程如下：</font>
+具体详细过程如下：
 
-+ <font style="color:rgb(44, 62, 80);">MySQL 主库在收到客户端提交事务的请求之后，会先写入 binlog，再提交事务，更新存储引擎中的数据，事务提交完成后，返回给客户端“操作成功”的响应。</font>
-+ <font style="color:rgb(44, 62, 80);">从库会创建一个专门的 I/O 线程，连接主库的 log dump 线程，来接收主库的 binlog 日志，再把 binlog 信息写入 relay log 的中继日志里，再返回给主库“复制成功”的响应。</font>
-+ <font style="color:rgb(44, 62, 80);">从库会创建一个用于回放 binlog 的线程，去读 relay log 中继日志，然后回放 binlog 更新存储引擎中的数据，最终实现主从的数据一致性。</font>
++ MySQL 主库在收到客户端提交事务的请求之后，会先写入 binlog，再提交事务，更新存储引擎中的数据，事务提交完成后，返回给客户端“操作成功”的响应。
++ 从库会创建一个专门的 I/O 线程，连接主库的 log dump 线程，来接收主库的 binlog 日志，再把 binlog 信息写入 relay log 的中继日志里，再返回给主库“复制成功”的响应。
++ 从库会创建一个用于回放 binlog 的线程，去读 relay log 中继日志，然后回放 binlog 更新存储引擎中的数据，最终实现主从的数据一致性。
 
-### <font style="color:rgb(44, 62, 80);background-color:rgb(227, 242, 253);">MySQL 主从复制还有哪些模型？</font>
+### MySQL 主从复制还有哪些模型？
 + **同步复制**：MySQL 主库提交事务的线程要等待所有从库的复制成功响应，才返回客户端结果。
 + **异步复制**（默认模型）：MySQL 主库提交事务的线程并不会等待 binlog 同步到各从库，就返回客户端结果。这种模式一旦主库宕机，数据就会发生丢失。
 + **半同步复制**：MySQL 5.7 版本之后增加的一种复制方式，介于两者之间，事务线程不用等待所有的从库复制成功响应，只要一部分复制成功响应回来就行，比如一主二从的集群，只要数据成功复制到任意一个从库上，主库的事务线程就可以返回给客户端。这种**半同步复制的方式，兼顾了异步复制和同步复制的优点，即使出现主库宕机，至少还有一个从库有最新的数据，不存在数据丢失的风险**。
 
-### <font style="color:rgb(44, 62, 80);background-color:rgb(227, 242, 253);">什么时候 binlog cache 会写到 binlog 文件？</font>
+### 什么时候 binlog cache 会写到 binlog 文件？
 ![](https://cdn.nlark.com/yuque/0/2025/png/39185937/1736142281151-e0e65beb-282e-4b86-88fb-43b4c3a2b122.png)
 
-<font style="color:rgb(44, 62, 80);">MySQL提供一个</font>**<font style="color:rgb(44, 62, 80);"> sync_binlog</font>**<font style="color:rgb(44, 62, 80);"> 参数来控制数据库的 binlog 刷到磁盘上的频率：</font>
+MySQL提供一个** sync_binlog** 参数来控制数据库的 binlog 刷到磁盘上的频率：
 
-+ <font style="color:rgb(44, 62, 80);">sync_binlog = 0 的时候，表示每次提交事务都只 write，不 fsync，后续交由操作系统决定何时将数据持久化到磁盘；</font>
-+ <font style="color:rgb(44, 62, 80);">sync_binlog = 1 的时候，表示每次提交事务都会 write，然后马上执行 fsync；</font>
-+ <font style="color:rgb(44, 62, 80);">sync_binlog =N(N>1) 的时候，表示每次提交事务都 write，但累积 N 个事务后才 fsync。</font>
++ sync_binlog = 0 的时候，表示每次提交事务都只 write，不 fsync，后续交由操作系统决定何时将数据持久化到磁盘；
++ sync_binlog = 1 的时候，表示每次提交事务都会 write，然后马上执行 fsync；
++ sync_binlog =N(N>1) 的时候，表示每次提交事务都 write，但累积 N 个事务后才 fsync。
 
-### <font style="color:rgb(44, 62, 80);">两阶段提交</font>
+### <font style="color:#DF2A3F;">两阶段提交</font>
 ![](https://cdn.nlark.com/yuque/0/2025/png/39185937/1736142853121-728e97e6-0f32-4a41-8fde-bfe817f37475.png)
 
-## redo log（重做日志）
-### <font style="color:rgb(44, 62, 80);background-color:rgb(227, 242, 253);">redo log 和 undo log 区别在哪？</font>
+## <font style="color:#DF2A3F;">redo log（重做日志）</font>
+### redo log 和 undo log 区别在哪？
 + redo log 记录了此次事务「**修改后**」的数据状态，记录的是更新**之后**的值，**主要用于事务崩溃恢复，保证事务的持久性**。
 + undo log 记录了此次事务「**修改前**」的数据状态，记录的是更新**之前**的值，**主要用于事务回滚，保证事务的原子性**。
 
 ![](https://cdn.nlark.com/yuque/0/2025/png/39185937/1736140665047-9b1bc618-9d1e-456f-a521-72909f249f44.png)
 
-### <font style="color:rgb(44, 62, 80);">redo log 要写到磁盘，数据也要写磁盘，为什么要多此一举？</font>
+### redo log 要写到磁盘，数据也要写磁盘，为什么要多此一举？
 写入 redo log 的方式使用了追加操作， 所以磁盘操作是**顺序写**，而写入数据需要先找到写入位置，然后才写到磁盘，所以磁盘操作是**随机写**。
 
 ### 刷盘时机
@@ -354,7 +354,7 @@ InnoDB 将 redo log 刷到磁盘上有几种情况：
 
 ## Undo log（回滚日志）
 1. 每一个事务对数据的修改都会被记录到 undo log ，当执行事务过程中出现错误或者需要执行回滚操作的话，MySQL 可以利用 undo log 将数据恢复到事务开始之前的状态。
-2. undo log 属于逻辑日志，记录的是 SQL 语句，比如说事务执行一条 DELETE 语句，那 undo log 就会记录一条相对应的 INSERT 语句。同时，undo log 的信息也会被记录到 redo log 中，因为 undo log 也要实现持久性保护。并且，undo-log 本身是会被删除清理的，例如 INSERT 操作，在事务提交之后就可以清除掉了；UPDATE/DELETE 操作在事务提交不会立即删除<font style="color:rgb(60, 60, 67);">，会加入 history list，由后台线程 purge 进行清理；回滚时候对insert语句是直接插入，而</font><font style="color:rgb(44, 62, 80);">针对 delete 操作和 update 操作会有一些特殊的处理：</font>
+2. undo log 属于逻辑日志，记录的是 SQL 语句，比如说事务执行一条 DELETE 语句，那 undo log 就会记录一条相对应的 INSERT 语句。同时，undo log 的信息也会被记录到 redo log 中，因为 undo log 也要实现持久性保护。并且，undo-log 本身是会被删除清理的，例如 INSERT 操作，在事务提交之后就可以清除掉了；UPDATE/DELETE 操作在事务提交不会立即删除，会加入 history list，由后台线程 purge 进行清理；回滚时候对insert语句是直接插入，而针对 delete 操作和 update 操作会有一些特殊的处理：
 + delete对象会被打上delete flag，由后台线程 purge 进行清理。
 + update的列不是主键列的话会直接反向记录update，否则先删除该行再插入目标行
 3. undo log 是采用 segment（段）的方式来记录的，每个 undo 操作在记录的时候占用一个 **undo log segment**（undo 日志段），undo log segment 包含在 **rollback segment**（回滚段）中。事务开始时，需要为其分配一个 rollback segment。每个 rollback segment 有 1024 个 undo log segment，这有助于管理多个并发事务的回滚需求。
@@ -374,12 +374,12 @@ Undo页是用来记录undo log的
 
 ![](https://cdn.nlark.com/yuque/0/2025/png/39185937/1736140474693-1e107d37-fb09-484a-b064-2903603862b2.png)
 
-### <font style="color:rgb(44, 62, 80);">如何管理空闲页？</font>
+### 如何管理空闲页？
 **Free链表（空闲链表）：**
 
 ![](https://cdn.nlark.com/yuque/0/2025/png/39185937/1736143179068-df79f14b-5e67-4f2f-819d-d386994372f5.png)
 
-### <font style="color:rgb(44, 62, 80);">如何管理脏页？</font>
+### 如何管理脏页？
 Flush链表（刷新链表）：
 
 ![](https://cdn.nlark.com/yuque/0/2025/png/39185937/1736143269164-3b60791a-c0ea-4e5c-ae5d-4154e902b2ad.png)
@@ -400,11 +400,72 @@ old 区域占整个 LRU 链表长度的比例可以通过 `innodb_old_blocks_pct
 
 **怎么解决？**
 
-MySQL 是这样做的，进入到 young 区域条件增加了一个**停留在 old 区域的时间判断**。如果后续的访问时间与第一次访问的时间**在某个时间间隔内**，那么**该缓存页就不会被从 old 区域移动到 young 区域的头部**；<font style="color:rgb(44, 62, 80);">另外，MySQL 针对 young 区域其实做了一个优化，为了防止 young 区域节点频繁移动到头部。young 区域前面 1/4 被访问不会移动到链表头部，只有后面的 3/4被访问了才会。</font>
+MySQL 是这样做的，进入到 young 区域条件增加了一个**停留在 old 区域的时间判断**。如果后续的访问时间与第一次访问的时间**在某个时间间隔内**，那么**该缓存页就不会被从 old 区域移动到 young 区域的头部**；另外，MySQL 针对 young 区域其实做了一个优化，为了防止 young 区域节点频繁移动到头部。young 区域前面 1/4 被访问不会移动到链表头部，只有后面的 3/4被访问了才会。
 
-### <font style="color:rgb(44, 62, 80);">脏页什么时候会被刷入磁盘</font>
-+ <font style="color:rgb(44, 62, 80);">当 redo log 日志满了的情况下，会主动触发脏页刷新到磁盘；</font>
-+ <font style="color:rgb(44, 62, 80);">Buffer Pool 空间不足时，需要将一部分数据页淘汰掉，如果淘汰的是脏页，需要先将脏页同步到磁盘；</font>
-+ <font style="color:rgb(44, 62, 80);">MySQL 认为空闲时，后台线程会定期将适量的脏页刷入到磁盘；</font>
-+ <font style="color:rgb(44, 62, 80);">MySQL 正常关闭之前，会把所有的脏页刷入到磁盘；</font>
+### 脏页什么时候会被刷入磁盘
++ 当 redo log 日志满了的情况下，会主动触发脏页刷新到磁盘；
++ Buffer Pool 空间不足时，需要将一部分数据页淘汰掉，如果淘汰的是脏页，需要先将脏页同步到磁盘；
++ MySQL 认为空闲时，后台线程会定期将适量的脏页刷入到磁盘；
++ MySQL 正常关闭之前，会把所有的脏页刷入到磁盘；
+
+## <font style="color:#DF2A3F;">慢查询SQL怎么进行优化</font>
+### 步骤 1：分析执行计划（EXPLAIN）
+1. **使用EXPLAIN**：在SQL查询前加上`EXPLAIN`，查看执行计划，了解查询的执行方式。
+
+```sql
+EXPLAIN SELECT * FROM your_table WHERE condition;
+```
+
+2. **解读结果**：
+    - `type`：检查是否使用了`index`或`range`，避免`ALL`（全表扫描）。
+    - `key`：确认是否使用了预期的索引。
+    - `rows`：估计扫描的行数，越少越好。
+    - `Extra`：是否有`Using temporary`或`Using filesort`，说明可能需要优化排序或分组。
+
+### 步骤 2：检查索引
+1. **添加索引**：为WHERE条件、JOIN、ORDER BY、GROUP BY涉及的字段创建索引。
+
+```sql
+CREATE INDEX idx_column ON your_table (column);
+```
+
+2. **组合索引**：对多个条件字段创建组合索引，确保查询条件顺序与索引一致。
+
+```sql
+CREATE INDEX idx_col1_col2 ON your_table (col1, col2);
+```
+
+3. **避免冗余索引**：删除不必要的索引，过多的索引会影响写操作性能。
+
+### 步骤 3：优化查询语句
+1. **简化查询**：
+    - 避免SELECT *，只选择需要的字段。
+    - 简化WHERE条件，避免复杂的子查询或嵌套。
+    - 使用JOIN替代子查询，优化子查询性能。
+2. **避免函数和类型转换**：确保字段在查询中不被函数或类型转换影响，例如：
+
+```sql
+-- 不推荐
+WHERE TO_DAYS(date_column) = TO_DAYS('2023-10-01');
+
+-- 推荐
+WHERE date_column >= '2023-10-01' AND date_column < '2023-10-02';
+```
+
+3. **优化分页**：对于大数据分页，使用优化技巧，如覆盖索引或缓存。
+
+### 步骤 4：优化数据库配置
+1. **调整缓冲区**：根据内存情况调整InnoDB缓冲池大小。
+
+```sql
+innodb_buffer_pool_size = 2G;
+```
+
+2. **优化存储引擎**：根据需求选择合适的存储引擎，如InnoDB支持事务，MyISAM适合读多写少场景。
+
+### 步骤 5：考虑数据分割
+1. **垂直分割**：将不常用字段移到其他表。
+2. **水平分割**：按时间或范围分表，减少单表数据量。
+
+
 
