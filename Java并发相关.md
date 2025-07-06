@@ -35,6 +35,10 @@
 
 **总结：线程是进程划分成的更小的运行单位。线程和进程最大的不同在于基本上各进程是独立的，而各线程则不一定，因为同一进程中的线程极有可能会相互影响。线程执行开销小，但不利于资源的管理和保护；而进程正相反。**
 
+### 堆和方法区为什么是公有的?
+1. 在Java中，堆和方法区是被同一个进程下的所有线程所共享的。这样设计的主要原因是，线程在切换时无需分别保存和恢复自己的堆和方法区内存信息，减少了上下文切换的开销，从而提升了程序的运行效率。
+2. 由于线程属于同一个进程，它们可以方便地访问和操作堆中的对象和方法区中的类信息，实现了资源的高效共享和协作。如果每个线程都拥有独立的堆和方法区，不仅会极大地增加内存消耗，还会导致对象间通信和类信息管理变得复杂，降低系统性能。
+
 ### 程序计数器为什么是私有的?
 程序计数器主要有下面两个作用：
 
@@ -329,7 +333,7 @@ public interface Future<V> {
     // 指定时间内没有返回计算结果就抛出 TimeOutException 异常
     V get(long timeout, TimeUnit unit)
 
-    throws InterruptedException, ExecutionException, TimeoutExceptio
+    throws InterruptedException, ExecutionException, TimeoutExceptio;
 
 }
 ```
